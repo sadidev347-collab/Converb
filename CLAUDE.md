@@ -2,33 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## First-Time Setup
-
-If the values below still say "Pamplejuce" or "Pamplejuce Demo", this project was freshly created from the template and hasn't been personalized yet. Ask the user:
-
-1. **What's your plugin called?** (display name for DAWs, e.g. "Super Synth")
-2. **What's your company name?** (e.g. "My Audio Co")
-3. **What type of plugin is this?** (synth, effect, utility, etc.)
-4. **What IDE do you use?** (CLion, VS Code, Xcode, other)
-5. **Do you want CI/CD via GitHub Actions?** Note: public repos get unlimited CI minutes, but private repos have a limited monthly allowance. If they're on a private repo and want to avoid burning minutes during active development, suggest commenting out matrix entries in the workflow to build on just one platform (e.g. only their dev OS) and running tests only — they can re-enable the full matrix when preparing a release.
-6. **If using CI, do you need Intel IPP?** (provides SIMD-optimized DSP functions — if not, comment out the IPP install steps in the workflow to avoid CI failures)
-7. **Are you code signing?** Code signing is essentially required to distribute to anyone (beta testers, friends, customers) — without it, macOS Gatekeeper and Windows SmartScreen will block or warn on the plugin. But it can be set up later; it's fine to skip during early development. Ask separately for macOS and Windows:
-   - **macOS**: codesigning + notarization requires an Apple Developer account ($99/year). If not signing yet, comment out the codesign/notarize steps in the CI workflow. Guide: [How to code sign and notarize macOS audio plugins in CI](https://melatonin.dev/blog/how-to-code-sign-and-notarize-macos-audio-plugins-in-ci/)
-   - **Windows**: Azure Trusted Signing is the recommended approach (free tier available). If not signing yet, comment out the Azure signing step. Guide: [Code signing on Windows with Azure Trusted Signing](https://melatonin.dev/blog/code-signing-on-windows-with-azure-trusted-signing/)
-
-Then:
-- Update `CMakeLists.txt`: set `PROJECT_NAME` (no spaces), `PRODUCT_NAME` (display name), `COMPANY_NAME`, `BUNDLE_ID`, `PLUGIN_MANUFACTURER_CODE` (4 chars), and `PLUGIN_CODE` (4 chars)
-- Let the user know: builds default to **Debug** mode for development (faster builds, better debugging). If they're making music with the plugin and experiencing performance issues (audio dropouts, high CPU), they should ask to build in **Release** mode instead.
-- Rewrite the **Build Commands** section below to match their IDE:
-  - **CLion**: use `cmake-build-debug` / `cmake-build-release` as build directories (CLion's defaults — sharing them avoids duplicate builds). Use `-G Ninja` with CLion's bundled ninja so the `.ninja_log` format stays compatible between CLI and IDE builds.
-  - **VS Code**: use `build` or `Builds` as the build directory. Recommend Ninja + the CMake Tools extension.
-  - **Xcode**: use `-G Xcode` and open the generated `.xcodeproj`. CLI builds can use `Builds` with Ninja.
-- If they don't want CI right now, comment out the platforms in the matrix they don't need
-- If they don't need IPP, comment out the IPP install steps in the workflow
-- If they're not code signing on a platform, comment out the relevant signing/notarization steps in the workflow
-- Remove this setup section from CLAUDE.md once complete
-
 ## About This Project
+
+**Converb** by Adidev Plugin Suite — a convolution reverb effect plugin (`PLUGIN_MANUFACTURER_CODE Adps`, `PLUGIN_CODE Cnvb`). Builds default to **Debug**; use Release (`cmake-build-release`) if you hit dropouts or high CPU while making music. CI runs the full Linux/macOS/Windows matrix with IPP and code signing disabled.
 
 This project is derived from the [Pamplejuce](https://github.com/sudara/pamplejuce) template — a JUCE audio plugin template using CMake, C++23, and modern CI/CD. It builds cross-platform (macOS, Windows, Linux) with support for multiple plugin formats (VST3, AU, AUv3, CLAP, Standalone).
 
@@ -36,27 +12,31 @@ The template provides the build system, CI/CD, and project structure. The plugin
 
 ## Build Commands
 
+The IDE is CLion. Use CLion's build directories and its bundled Ninja so CLI and IDE builds share `.ninja_log`.
+
 ```bash
+NINJA=/Applications/CLion.app/Contents/bin/ninja/mac/aarch64/ninja
+
 # Configure (run once, or after CMakeLists.txt changes)
-cmake -B Builds -DCMAKE_BUILD_TYPE=Debug
+cmake -B cmake-build-debug -G Ninja -DCMAKE_MAKE_PROGRAM=$NINJA -DCMAKE_BUILD_TYPE=Debug
 
 # Build
-cmake --build Builds --config Debug
+cmake --build cmake-build-debug
 
 # Run tests (from project root)
-ctest --test-dir Builds --verbose --output-on-failure
+ctest --test-dir cmake-build-debug --verbose --output-on-failure
 
 # Or run tests directly
-./Builds/Tests
+./cmake-build-debug/Tests
 
 # Run a single test by name
-./Builds/Tests "[test name]"
+./cmake-build-debug/Tests "[test name]"
 
 # Run benchmarks
-./Builds/Benchmarks
+./cmake-build-debug/Benchmarks
 ```
 
-For faster builds, add Ninja: `cmake -B Builds -G Ninja -DCMAKE_BUILD_TYPE=Debug`
+Release builds: same commands with `cmake-build-release` and `-DCMAKE_BUILD_TYPE=Release`.
 
 On macOS for universal binary: `-DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"`
 

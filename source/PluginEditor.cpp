@@ -1,48 +1,48 @@
 #include "PluginEditor.h"
 
-PluginEditor::PluginEditor (PluginProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
+namespace
 {
-    juce::ignoreUnused (processorRef);
+    constexpr auto sizeProperty = "editorWidth";
+    constexpr double aspectRatio = (double) MainView::designWidth / MainView::designHeight;
+}
 
-    addAndMakeVisible (inspectButton);
+PluginEditor::PluginEditor (PluginProcessor& p)
+    : AudioProcessorEditor (&p), processorRef (p), view (p)
+{
+    setLookAndFeel (&lookAndFeel);
+    view.setLookAndFeel (&lookAndFeel);
+    addAndMakeVisible (view);
 
-    // this chunk of code instantiates and opens the melatonin inspector
-    inspectButton.onClick = [&] {
-        if (!inspector)
-        {
-            inspector = std::make_unique<melatonin::Inspector> (*this);
-            inspector->onClose = [this]() { inspector.reset(); };
-        }
+    // Resizable with a fixed aspect ratio; the view is laid out once at design size and scaled
+    setResizable (true, true);
+    setResizeLimits (MainView::designWidth * 4 / 5, MainView::designHeight * 4 / 5, MainView::designWidth * 2, MainView::designHeight * 2);
+    getConstrainer()->setFixedAspectRatio (aspectRatio);
 
-        inspector->setVisible (true);
-    };
+    const auto savedWidth = (int) processorRef.getValueTreeState().state.getProperty (sizeProperty, MainView::designWidth);
+    const auto width = juce::jlimit (MainView::designWidth * 4 / 5, MainView::designWidth * 2, savedWidth);
+    setSize (width, juce::roundToInt (width / aspectRatio));
 
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    // Only user/host resizes from here on (the limits above already resized us to the minimum)
+    rememberSize = true;
 }
 
 PluginEditor::~PluginEditor()
 {
+    view.setLookAndFeel (nullptr);
+    setLookAndFeel (nullptr);
 }
 
 void PluginEditor::paint (juce::Graphics& g)
 {
-    // (Our component is opaque, so we must completely fill the background with a solid colour)
-    g.fillAll (getLookAndFeel().findColour (juce::ResizableWindow::backgroundColourId));
-
-    auto area = getLocalBounds();
-    g.setColour (juce::Colours::white);
-    g.setFont (16.0f);
-    auto helloWorld = juce::String ("Hello from ") + PRODUCT_NAME_WITHOUT_VERSION + " v" VERSION + " running in " + CMAKE_BUILD_TYPE;
-    g.drawText (helloWorld, area.removeFromTop (150), juce::Justification::centred, false);
+    g.fillAll (juce::Colours::black);
 }
 
 void PluginEditor::resized()
 {
-    // layout the positions of your child components here
-    auto area = getLocalBounds();
-    area.removeFromBottom(50);
-    inspectButton.setBounds (getLocalBounds().withSizeKeepingCentre(100, 50));
+    const auto scale = (float) getWidth() / (float) MainView::designWidth;
+    view.setBounds (0, 0, MainView::designWidth, MainView::designHeight);
+    view.setTransform (juce::AffineTransform::scale (scale));
+
+    if (rememberSize)
+        processorRef.getValueTreeState().state.setProperty (sizeProperty, getWidth(), nullptr);
 }

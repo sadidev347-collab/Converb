@@ -1,8 +1,8 @@
 #pragma once
 
 #include "PluginProcessor.h"
-#include "BinaryData.h"
-#include "melatonin_inspector/melatonin_inspector.h"
+#include "ui/ConverbLookAndFeel.h"
+#include "ui/MainView.h"
 
 //==============================================================================
 class PluginEditor : public juce::AudioProcessorEditor
@@ -16,10 +16,9 @@ public:
     void resized() override;
 
 private:
-    // This reference is provided as a quick way for your editor to
-    // access the processor object that created it.
     PluginProcessor& processorRef;
-    std::unique_ptr<melatonin::Inspector> inspector;
-    juce::TextButton inspectButton { "Inspect the UI" };
+    ConverbLookAndFeel lookAndFeel; // must outlive the components using it
+    MainView view;
+    bool rememberSize = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginEditor)
 };
